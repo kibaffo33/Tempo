@@ -127,13 +127,13 @@ class Database:
                 timestamps
             WHERE
                 pk NOT IN (
-                    SELECT 
-                        pk 
-                    FROM 
+                    SELECT
+                        pk
+                    FROM
                         timestamps
-                    ORDER BY 
-                        pk DESC 
-                    LIMIT 
+                    ORDER BY
+                        pk DESC
+                    LIMIT
                         1000
                 )
         """
