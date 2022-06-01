@@ -6,7 +6,9 @@ What is Tempo?
 
 Tempo is a lightweight timestamp decoder for MacOS.
 
-![Screenshot](Screenshot.png)
+![Main Menu](Screenshot-1.png)
+
+![Algorithms Menu](Screenshot-2.png)
 
 Tempo is:
 
@@ -16,13 +18,9 @@ Tempo is:
 
 - [x] Quick and dirty
 
-- [x] A minimum viable product
-
 - [x] For MacOS
 
 Tempo is not:
-
-- [ ] Complete
 
 - [ ] Feature rich
 
@@ -37,6 +35,6 @@ Supported formats:
 
 - [x] Unix Epoch / 1000
 
-- [ ] Cocoa Core Data Timestamp
+- [x] Cocoa Core Data Timestamp
 
-- [ ] Google Chrome
+- [x] Google Chrome

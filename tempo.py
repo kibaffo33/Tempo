@@ -5,11 +5,28 @@ import sqlite3
 DB_PATH = Path.home() / Path(".tempo.db")
 
 
+LABELS = {
+    "epoch": "Unix Epoch",
+    "epoch_ms": "Unix Epoch / 1000",
+    "cocoa": "Cocoa Core Data",
+    "chrome": "Google Chrome",
+}
+
+ALGORITHMS = {
+    LABELS["epoch"]: """datetime(?, 'unixepoch', ?)""",
+    LABELS["epoch_ms"]: """datetime(? / 1000, 'unixepoch', ?)""",
+    LABELS["cocoa"]: """datetime(? + 978307200, 'unixepoch', ?)""",
+    LABELS["chrome"]: """datetime(? / 1000000 - 11644473600, 'unixepoch', ?)""",
+}
+
+
 class Tempo(object):
     def __init__(self):
         self.app = rumps.App("Tempo", "⏰")
-        self.ts_button = rumps.MenuItem("⏰ Timestamp", callback=self.timestamp)
-        self.tsm_button = rumps.MenuItem("⏰ Timestamp / 1000", callback=self.timestamp_ms)
+
+        self.algorithms_button = rumps.MenuItem("⏰ Algorithms")
+        self.algorithms = list(map(lambda label: rumps.MenuItem(LABELS[label], callback=self.set_algorithm), LABELS.keys()))
+
         self.modifier_button = rumps.MenuItem("🌎 Modifier")
         self.modifiers = list(
             map(
@@ -17,15 +34,23 @@ class Tempo(object):
                 range(-12, 13),
             )
         )
+
+        self.enter_timestamp = rumps.MenuItem("👉 Enter timestamp", self.timestamp)
+
         self.app.menu = [
-            self.ts_button,
-            self.tsm_button,
+            [self.algorithms_button, self.algorithms],
             [self.modifier_button, self.modifiers],
+            self.enter_timestamp,
         ]
+
         self.db = Database()
+        self.db.tidy_db()
+
+    def set_algorithm(self, algorithm):
+        self.db.set_meta("algorithm", algorithm.title)
 
     def set_modifier(self, modifier):
-        self.db.set_modifier(modifier.title)
+        self.db.set_meta("modifier", modifier.title)
 
     def get_input(self):
         timestamp_window = rumps.Window("Enter your value...", "Timestamp").run()
@@ -34,12 +59,7 @@ class Tempo(object):
 
     def timestamp(self, _):
         user_input = self.get_input()
-        self.db.insert(user_input, False)
-        self.show_history()
-
-    def timestamp_ms(self, _):
-        user_input = self.get_input()
-        self.db.insert(user_input, True)
+        self.db.insert_timestamp(user_input)
         self.show_history()
 
     def show_history(self):
@@ -53,11 +73,11 @@ class Tempo(object):
 
 class Database:
     def __init__(self):
-        self.conn = sqlite3.connect(f"{DB_PATH}")
+        self.setup_required = not DB_PATH.is_file()
+        self.conn = sqlite3.connect(f"{DB_PATH.absolute()}")
         self.cursor = self.conn.cursor()
-        exists = self.cursor.fetchone()
-        self.setup()
-        self.tidy_db()
+        if self.setup_required:
+            self.setup()
 
     def execute(self, sql: str, values=None):
         if values:
@@ -73,68 +93,33 @@ class Database:
         self.conn.commit()
 
     def setup(self):
-        sql = """
+        sql = f"""
             PRAGMA journal_mode = "WAL";
 
-            CREATE TABLE if not exists timestamps (
+            CREATE TABLE timestamps (
                 pk INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_input TEXT
             );
 
-            CREATE TABLE IF NOT EXISTS meta (
+            CREATE TABLE meta (
                 pk INTEGER PRIMARY KEY AUTOINCREMENT,
                 key TEXT,
                 value TEXT
             );
+
+            INSERT INTO meta (
+                key, value
+            ) values (
+                "algorithm", "{LABELS['epoch']}"
+            );
+
+            INSERT INTO meta (
+                key, value
+            ) values (
+                "modifier", "0 hours"
+            );
         """
         self.executescript(sql)
-        sql = """SELECT COUNT(*) FROM meta"""
-        meta = self.execute(sql)
-        if meta[0][0] == 0:
-            sql = """
-                INSERT INTO meta (
-                    key, value
-                ) values (
-                    "modifier", "0 hours"
-                )
-            """
-            self.execute(sql)
-        else:
-            self.set_modifier("0 hours")
-
-    def insert(self, user_input: str, milliseconds: bool):
-        modifier = self.get_modifier()
-        if milliseconds:
-            sql = """
-                INSERT INTO timestamps (
-                    user_input
-                ) values (
-                    datetime(? / 1000, 'unixepoch', ?)
-                )
-            """
-        else:
-            sql = """
-                INSERT INTO timestamps (
-                    user_input
-                ) values (
-                    datetime(?, 'unixepoch', ?)
-                )
-            """
-        self.execute(sql, (user_input, modifier))
-
-    def get_timestamp(self):
-        sql = """
-            SELECT
-                user_input
-            FROM
-                timestamps
-            ORDER BY
-                pk DESC
-            LIMIT
-                1
-        """
-        result = self.execute(sql)
-        return result[0][0]
 
     def tidy_db(self):
         sql = """
@@ -154,29 +139,56 @@ class Database:
         """
         self.execute(sql)
 
-    def set_modifier(self, modifier: str):
+    def insert_timestamp(self, user_input: str):
+        algorithm = self.get_meta("algorithm")
+        modifier = self.get_meta("modifier")
+        sql = f"""
+            INSERT INTO timestamps (
+                user_input
+            ) values (
+                {ALGORITHMS[algorithm]}
+            )
+        """
+        print(sql)
+        self.execute(sql, (user_input, modifier))
+
+    def get_timestamp(self):
+        sql = """
+            SELECT
+                user_input
+            FROM
+                timestamps
+            ORDER BY
+                pk DESC
+            LIMIT
+                1
+        """
+        result = self.execute(sql)
+        return result[0][0]
+
+    def set_meta(self, key: str, value: str):
         sql = """
             UPDATE
                 meta
-            SET 
+            SET
                 value = ?
             WHERE
-                key = "modifier"
+                key = ?
         """
-        self.execute(sql, (modifier,))
+        self.execute(sql, (value, key))
 
-    def get_modifier(self):
+    def get_meta(self, key):
         sql = """
             SELECT
                 value
             FROM
                 meta
             WHERE
-                key = "modifier"
+                key = ?
             LIMIT
                 1
         """
-        result = self.execute(sql)
+        result = self.execute(sql, (key,))
         return result[0][0]
 
     def __del__(self):
