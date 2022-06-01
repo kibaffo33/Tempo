@@ -6,9 +6,7 @@ What is Tempo?
 
 Tempo is a lightweight timestamp decoder for MacOS.
 
-![Main Menu](Screenshot-1.png)
-
-![Algorithms Menu](Screenshot-2.png)
+![Screenshot](Screenshot.png)
 
 Tempo is:
 
