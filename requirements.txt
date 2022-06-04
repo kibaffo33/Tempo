@@ -1,0 +1,8 @@
+Package                Version
+---------------------- -------
+pip                    22.1.2
+pyobjc-core            8.5
+pyobjc-framework-Cocoa 8.5
+rumps                  0.3.0
+setuptools             62.1.0
+wheel                  0.37.1
