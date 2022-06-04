@@ -44,3 +44,33 @@ def test_timestamps(algorithm, user_input, modifier, expected_result):
     # THEN check result is as expected
     result = db.get_timestamp()
     assert result == expected_result
+
+
+@pytest.mark.parametrize(
+    "user_input,expected_result",
+    [
+        ("123456789", True),
+        ("123456789.12345", True),
+        ("1234567890123", True),
+        ("1234567890123.12345", True),
+        ("abc", False),
+        ("", False),
+        ("123", True),
+        ("123.", False),
+        (" 123", False),
+        ("123 ", False),
+        ("123.123", True),
+        (" 123.123", False),
+        ("123.123 ", False),
+    ],
+)
+def test_input_validation(user_input, expected_result):
+
+    # GIVEN user_input and a running instance of the app
+    app = tempo.Tempo()
+
+    # WHEN validating user_input
+    result = app.validate_input(user_input)
+
+    # THEN check result is as expected
+    assert result == expected_result

@@ -1,6 +1,7 @@
 import rumps
 from pathlib import Path
 import sqlite3
+import re
 
 DB_PATH = Path.home() / Path(".tempo.db")
 
@@ -57,15 +58,28 @@ class Tempo(object):
         user_input = timestamp_window.text
         return user_input
 
+    def validate_input(self, user_input):
+        pattern = r"\d+(\.\d+)?"
+        match = re.fullmatch(pattern, user_input)
+        return bool(match)
+
     def timestamp(self, _):
         user_input = self.get_input()
-        self.db.insert_timestamp(user_input)
-        self.show_history()
+        valid = self.validate_input(user_input)
+        if valid:
+            self.db.insert_timestamp(user_input)
+            self.show_history()
+        else:
+            self.show_input_error()
 
     def show_history(self):
         result = self.db.get_timestamp()
         rumps.alert(title="Timestamp", message=result)
         self.app.menu.add(result)
+
+    def show_input_error(self):
+        message = "The input was erroneous.\n"
+        rumps.alert(title="Timestamp", message=message)
 
     def run(self):
         self.app.run()
