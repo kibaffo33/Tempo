@@ -149,7 +149,6 @@ class Database:
                 {ALGORITHMS[algorithm]}
             )
         """
-        print(sql)
         self.execute(sql, (user_input, modifier))
 
     def get_timestamp(self):
